@@ -609,62 +609,93 @@ function capitalizeWords(str) {
 // Progress Tracker Functions
 function initializeProgressTracker() {
     updateProgressTracker();
-
-    // Toggle expand/collapse
-    document.getElementById('progress-tracker-toggle')?.addEventListener('click', () => {
-        const details = document.getElementById('progress-details');
-        const expandBtn = document.getElementById('progress-expand-btn');
-
-        if (details.style.display === 'none') {
-            details.style.display = 'flex';
-            expandBtn.classList.add('expanded');
-        } else {
-            details.style.display = 'none';
-            expandBtn.classList.remove('expanded');
-        }
-    });
 }
 
 function updateProgressTracker() {
-    const totalCombos = brands.length * channels.length;
-    const completedCount = state.completedCombos.size;
-    const percentage = (completedCount / totalCombos) * 100;
+    const progressContainer = document.getElementById('all-progress-details');
+    progressContainer.innerHTML = '';
 
-    // Update count and progress bar
-    document.getElementById('progress-count').textContent = `${completedCount} of ${totalCombos} completed`;
-    document.getElementById('progress-fill').style.width = `${percentage}%`;
-
-    // Build brand breakdown
-    const progressDetails = document.getElementById('progress-details');
-    progressDetails.innerHTML = '';
-
-    brands.forEach(brand => {
-        const brandName = capitalizeWords(brand.replace(/-/g, ' '));
-        const completedChannels = channels.filter(channel =>
-            state.completedCombos.has(`${brand}:${channel}`)
-        ).length;
-
+    // Build progress for each template
+    Object.keys(templates).forEach(templateKey => {
+        const template = templates[templateKey];
         const item = document.createElement('div');
-        item.className = `progress-item ${completedChannels === channels.length ? 'completed' : ''}`;
-        item.innerHTML = `
-            <div class="progress-item-info">
-                <div class="progress-item-icon">${completedChannels === channels.length ? '✓' : brand.charAt(0).toUpperCase()}</div>
-                <div class="progress-item-text">${brandName}</div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <div class="progress-item-status">${completedChannels}/${channels.length}</div>
-                <button class="progress-item-go-btn" data-brand="${brand}">Go</button>
-            </div>
-        `;
 
-        // Add click handler for Go button
-        const goBtn = item.querySelector('.progress-item-go-btn');
-        goBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            jumpToBrand(brand);
-        });
+        if (template.needsBrand && template.needsChannel) {
+            // Brand Performance Slides - expandable with brand breakdown
+            const totalCombos = brands.length * channels.length;
+            const completedCount = state.completedCombos.size;
 
-        progressDetails.appendChild(item);
+            item.className = 'progress-item';
+            item.innerHTML = `
+                <div class="progress-item-info">
+                    <div class="progress-item-icon">📊</div>
+                    <div class="progress-item-text">${template.name}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="progress-item-status">${completedCount}/${totalCombos}</div>
+                    <button class="progress-item-expand-btn" data-template="${templateKey}">▼</button>
+                </div>
+            `;
+
+            // Create sub-items container
+            const subItems = document.createElement('div');
+            subItems.className = 'progress-sub-items';
+            subItems.id = `sub-items-${templateKey}`;
+
+            brands.forEach(brand => {
+                const brandName = capitalizeWords(brand.replace(/-/g, ' '));
+                const completedChannels = channels.filter(channel =>
+                    state.completedCombos.has(`${brand}:${channel}`)
+                ).length;
+
+                const subItem = document.createElement('div');
+                subItem.className = `progress-sub-item ${completedChannels === channels.length ? 'completed' : ''}`;
+                subItem.innerHTML = `
+                    <div class="progress-item-info">
+                        <div class="progress-item-icon" style="width: 16px; height: 16px; font-size: 10px;">${completedChannels === channels.length ? '✓' : brand.charAt(0).toUpperCase()}</div>
+                        <div class="progress-item-text">${brandName}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="progress-item-status" style="font-size: 10px;">${completedChannels}/${channels.length}</div>
+                        <button class="progress-item-go-btn" style="padding: 2px 8px; font-size: 10px;" data-brand="${brand}">Go</button>
+                    </div>
+                `;
+
+                // Add click handler for Go button
+                const goBtn = subItem.querySelector('.progress-item-go-btn');
+                goBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    jumpToBrand(brand);
+                });
+
+                subItems.appendChild(subItem);
+            });
+
+            // Add expand/collapse handler
+            const expandBtn = item.querySelector('.progress-item-expand-btn');
+            expandBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                subItems.classList.toggle('expanded');
+                expandBtn.classList.toggle('expanded');
+            });
+
+            progressContainer.appendChild(item);
+            progressContainer.appendChild(subItems);
+        } else {
+            // Other templates - simple complete/incomplete status
+            const isComplete = false; // TODO: track completion for these templates
+
+            item.className = `progress-item ${isComplete ? 'completed' : ''}`;
+            item.innerHTML = `
+                <div class="progress-item-info">
+                    <div class="progress-item-icon">${template.slides[0].icon}</div>
+                    <div class="progress-item-text">${template.name}</div>
+                </div>
+                <div class="progress-item-status">${isComplete ? 'Complete' : 'Not Started'}</div>
+            `;
+
+            progressContainer.appendChild(item);
+        }
     });
 }
 
