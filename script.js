@@ -609,6 +609,20 @@ function capitalizeWords(str) {
 // Progress Tracker Functions
 function initializeProgressTracker() {
     updateProgressTracker();
+
+    // Toggle main progress tracker expand/collapse
+    document.getElementById('main-progress-toggle')?.addEventListener('click', () => {
+        const details = document.getElementById('all-progress-details');
+        const expandBtn = document.getElementById('main-progress-expand-btn');
+
+        if (details.style.display === 'none') {
+            details.style.display = 'flex';
+            expandBtn.classList.add('expanded');
+        } else {
+            details.style.display = 'none';
+            expandBtn.classList.remove('expanded');
+        }
+    });
 }
 
 function updateProgressTracker() {
