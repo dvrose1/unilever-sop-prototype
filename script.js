@@ -5,8 +5,7 @@ const state = {
     selectedBrand: null,
     selectedChannels: [],
     currentStep: 'workspace-selection',
-    generatedSlides: [],
-    completedCombos: [] // Track which brand-channel combos have been generated
+    generatedSlides: []
 };
 
 // Template definitions
@@ -232,7 +231,6 @@ function selectTemplate(template) {
     state.selectedTemplate = template;
     state.selectedBrand = null;
     state.selectedChannels = [];
-    // Don't reset completedCombos here - let user track progress across template switches
 
     const templateDef = templates[template];
 
@@ -282,28 +280,23 @@ function showBrandPreview() {
     const totalSlides = templateDef.slidesPerCombo * state.selectedChannels.length;
     document.getElementById('total-slide-count').textContent = totalSlides;
 
-    // Update progress tracker
-    updateProgressTracker();
-
     // Generate preview list
     const previewList = document.getElementById('brand-preview-list');
     previewList.innerHTML = '';
 
     state.selectedChannels.forEach(channel => {
         const channelName = capitalizeWords(channel.replace(/-/g, ' '));
-        const comboKey = `${state.selectedBrand}-${channel}`;
-        const isCompleted = state.completedCombos.includes(comboKey);
 
         templateDef.slides.forEach(slide => {
             const item = document.createElement('div');
-            item.className = 'slide-preview-item' + (isCompleted ? ' completed' : '');
+            item.className = 'slide-preview-item';
             item.innerHTML = `
                 <div class="slide-checkbox">
-                    <input type="checkbox" ${isCompleted ? '' : 'checked'} ${isCompleted ? 'disabled' : ''}>
+                    <input type="checkbox" checked>
                 </div>
                 <div class="slide-preview-thumbnail">${slide.icon}</div>
                 <div class="slide-preview-info">
-                    <h4>${slide.name}${isCompleted ? ' ✓' : ''}</h4>
+                    <h4>${slide.name}</h4>
                     <p>${brandName} - ${channelName}</p>
                     <div class="confidence-badge">
                         <span class="confidence-dot"></span>
@@ -322,80 +315,6 @@ function showBrandPreview() {
     goToStep('step-preview');
 }
 
-function updateProgressTracker() {
-    const totalCombos = state.selectedChannels.length;
-    const completedCount = state.selectedChannels.filter(channel => {
-        const comboKey = `${state.selectedBrand}-${channel}`;
-        return state.completedCombos.includes(comboKey);
-    }).length;
-
-    document.getElementById('total-combos').textContent = totalCombos;
-    document.getElementById('completed-count').textContent = completedCount;
-
-    const progressPercent = totalCombos > 0 ? (completedCount / totalCombos) * 100 : 0;
-    const progressFill = document.getElementById('progress-fill');
-    if (progressFill) {
-        progressFill.style.width = `${progressPercent}%`;
-    }
-
-    // Build clickable progress items
-    const progressItemsContainer = document.getElementById('progress-tracker-items');
-    if (progressItemsContainer) {
-        progressItemsContainer.innerHTML = '';
-
-        state.selectedChannels.forEach(channel => {
-            const comboKey = `${state.selectedBrand}-${channel}`;
-            const isCompleted = state.completedCombos.includes(comboKey);
-            const brandName = state.selectedBrand === 'all' ? 'All Brands' : capitalizeWords(state.selectedBrand.replace(/-/g, ' '));
-            const channelName = capitalizeWords(channel.replace(/-/g, ' '));
-
-            const progressItem = document.createElement('div');
-            progressItem.className = 'progress-item' + (isCompleted ? ' completed' : '');
-            progressItem.dataset.brand = state.selectedBrand;
-            progressItem.dataset.channel = channel;
-
-            progressItem.innerHTML = `
-                <div class="progress-item-info">
-                    <div class="progress-item-icon">${isCompleted ? '✓' : state.selectedChannels.indexOf(channel) + 1}</div>
-                    <div class="progress-item-text">${brandName} - ${channelName}</div>
-                </div>
-                <div class="progress-item-status">${isCompleted ? 'Completed' : 'Pending'}</div>
-            `;
-
-            // Make clickable
-            progressItem.addEventListener('click', () => {
-                jumpToCombo(state.selectedBrand, channel);
-            });
-
-            progressItemsContainer.appendChild(progressItem);
-        });
-    }
-}
-
-function jumpToCombo(brand, channel) {
-    // If clicking on a completed item, let user review/regenerate
-    // If clicking on a pending item, select it and go to generation
-    const comboKey = `${brand}-${channel}`;
-    const isCompleted = state.completedCombos.includes(comboKey);
-
-    // Set the state to this specific combo
-    state.selectedBrand = brand;
-    state.selectedChannels = [channel];
-
-    // Uncheck all channel checkboxes first
-    document.querySelectorAll('.channel-checkbox').forEach(cb => cb.checked = false);
-
-    // Check only the selected channel
-    const channelCheckbox = document.querySelector(`[data-channel="${channel}"] .channel-checkbox`);
-    if (channelCheckbox) {
-        channelCheckbox.checked = true;
-    }
-
-    // Show preview for this specific combo
-    showBrandPreview();
-
-    showNotification(`Viewing ${capitalizeWords(brand.replace(/-/g, ' '))} - ${capitalizeWords(channel.replace(/-/g, ' '))}`);
-}
 
 function showOtherTemplatePreview() {
     const templateDef = templates[state.selectedTemplate];
@@ -458,7 +377,7 @@ function generateSlides() {
 
 function showGeneratedSlides() {
     // Count checked slides
-    const checkedSlides = document.querySelectorAll('.slide-preview-item:not(.completed) input[type="checkbox"]:checked');
+    const checkedSlides = document.querySelectorAll('.slide-preview-item input[type="checkbox"]:checked');
     const slideCount = checkedSlides.length;
 
     // Update success message
@@ -467,14 +386,6 @@ function showGeneratedSlides() {
     const templateDef = templates[state.selectedTemplate];
     if (templateDef.needsBrand && templateDef.needsChannel) {
         const brandName = capitalizeWords(state.selectedBrand.replace(/-/g, ' '));
-
-        // Mark channels as completed
-        state.selectedChannels.forEach(channel => {
-            const comboKey = `${state.selectedBrand}-${channel}`;
-            if (!state.completedCombos.includes(comboKey)) {
-                state.completedCombos.push(comboKey);
-            }
-        });
 
         const channelNames = state.selectedChannels.map(c =>
             capitalizeWords(c.replace(/-/g, ' '))
